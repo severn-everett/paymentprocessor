@@ -4,18 +4,20 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class TransactionStore implements ITransactionStore {
+    
+    private static final Logger LOGGER = LoggerFactory.getLogger(TransactionStore.class);
     
     private static final String SUM_STAT = "sum";
     private static final String AVG_STAT = "avg";
@@ -46,18 +48,7 @@ public class TransactionStore implements ITransactionStore {
         });
         
         ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
-
-        executorService.scheduleAtFixedRate(new Runnable() {
-            private final ExecutorService executor = Executors.newSingleThreadExecutor();
-            private Future<?> lastExecution;
-            @Override
-            public void run() {
-                if ((lastExecution != null) && (!lastExecution.isDone())) {
-                    return;
-                }
-                lastExecution = executor.submit(() -> trimQueue());
-            }
-        }, 1L, 1L, TimeUnit.SECONDS);
+        executorService.scheduleAtFixedRate(() -> trimQueue(), 1L, 1L, TimeUnit.SECONDS);
     }
     
     @Override
@@ -108,10 +99,12 @@ public class TransactionStore implements ITransactionStore {
     private void trimQueue() {
         try {
             writeLock.lock();
+            LOGGER.debug("Starting Trim Operation");
             Instant minuteBefore = Instant.now().minusSeconds(60L);
-            boolean reachedMinuteBefore = false;
-            while (!reachedMinuteBefore) {
+            boolean finishTrim = false;
+            while (!finishTrim) {
                 Transaction oldest = timestampQueue.peek();
+                // Check for whether the queue is empty or if there are no expired transactions
                 if ((oldest != null) && (oldest.getTimestamp().compareTo(minuteBefore) < 0)) {
                     timestampQueue.poll();
                     double amt = oldest.getAmt();
@@ -120,10 +113,11 @@ public class TransactionStore implements ITransactionStore {
                     minQueue.remove(amt);
                     count -= 1;
                 } else {
-                    reachedMinuteBefore = true;
+                    finishTrim = true;
                 }
             }
         } finally {
+            LOGGER.debug("Trim Operation Completed");
             writeLock.unlock();
         }
     }
