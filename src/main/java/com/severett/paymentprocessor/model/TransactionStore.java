@@ -9,6 +9,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -27,6 +30,10 @@ public class TransactionStore implements ITransactionStore {
     private final PriorityQueue<Double> minQueue;
     private final PriorityQueue<Transaction> timestampQueue;
     
+    private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+    private final Lock readLock = readWriteLock.readLock();
+    private final Lock writeLock = readWriteLock.writeLock();
+    
     public TransactionStore() {
         maxQueue = new PriorityQueue<>((t1, t2) -> {
             return t2.compareTo(t1);
@@ -39,12 +46,6 @@ public class TransactionStore implements ITransactionStore {
         });
         
         ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
-        final Runnable trimQueueTask = new Runnable() {
-            @Override
-            public void run() {
-                trimQueue();
-            }
-        };
 
         executorService.scheduleAtFixedRate(new Runnable() {
             private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -54,7 +55,7 @@ public class TransactionStore implements ITransactionStore {
                 if ((lastExecution != null) && (!lastExecution.isDone())) {
                     return;
                 }
-                lastExecution = executor.submit(trimQueueTask);
+                lastExecution = executor.submit(() -> trimQueue());
             }
         }, 1L, 1L, TimeUnit.SECONDS);
     }
@@ -67,19 +68,23 @@ public class TransactionStore implements ITransactionStore {
     }
     
     private void addToStats(Transaction transaction) {
-        synchronized (this) {
+        try {
+            writeLock.lock();
             timestampQueue.add(transaction);
             double amt = transaction.getAmt();
             maxQueue.add(amt);
             minQueue.add(amt);
             sum += amt;
             count += 1;
+        } finally {
+            writeLock.unlock();
         }
     }
     
     @Override
     public Map<String, Object> getTransactionStats() {
-        synchronized (this) {
+        try {
+            readLock.lock();
             Map<String, Object> statsMap = new HashMap<>();
             // Add the "sum" statistic
             statsMap.put(SUM_STAT, sum);
@@ -95,11 +100,14 @@ public class TransactionStore implements ITransactionStore {
             // Add the "count" statistic
             statsMap.put(COUNT_STAT, count);
             return statsMap;
+        } finally {
+            readLock.unlock();
         }
     }
     
     private void trimQueue() {
-        synchronized (this) {
+        try {
+            writeLock.lock();
             Instant minuteBefore = Instant.now().minusSeconds(60L);
             boolean reachedMinuteBefore = false;
             while (!reachedMinuteBefore) {
@@ -115,6 +123,8 @@ public class TransactionStore implements ITransactionStore {
                     reachedMinuteBefore = true;
                 }
             }
+        } finally {
+            writeLock.unlock();
         }
     }
     
