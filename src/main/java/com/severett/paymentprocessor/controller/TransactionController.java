@@ -1,7 +1,8 @@
 package com.severett.paymentprocessor.controller;
 
-import com.severett.paymentprocessor.model.Transaction;
-import java.time.Instant;
+import com.severett.paymentprocessor.exceptions.TransactionExpiredException;
+import com.severett.paymentprocessor.services.TransactionParseService;
+import com.severett.paymentprocessor.services.TransactionStorageService;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.json.JSONException;
@@ -14,13 +15,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
-import com.severett.paymentprocessor.services.TransactionStore;
 
 @RestController
 public class TransactionController {
     
     @Autowired
-    TransactionStore transactionStore;
+    TransactionStorageService transactionStore;
+    
+    @Autowired
+    TransactionParseService transactionParser;
     
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionController.class);
     
@@ -30,20 +33,11 @@ public class TransactionController {
         LOGGER.debug("Received POST Request");
         JSONObject responseObj = new JSONObject();
         try {
-            JSONObject requestObj = new JSONObject(requestBody);
-            if ((!requestObj.isNull("amount")) && (!requestObj.isNull("timestamp"))) {
-                double amt = requestObj.getDouble("amount");
-                Instant timestamp = Instant.ofEpochMilli(requestObj.getLong("timestamp"));
-                if (timestamp.compareTo(Instant.now().minusSeconds(60L)) >= 0) {
-                    transactionStore.addTransaction(new Transaction(timestamp, amt));
-                    response.setStatus(HttpServletResponse.SC_CREATED);
-                } else {
-                    LOGGER.info("Posted Transaction Is Expired - Dropping...");
-                    response.setStatus(HttpServletResponse.SC_NO_CONTENT);
-                }
-            } else {
-                throw new JSONException("'amt' and 'timestamp' must be defined.");
-            }
+            transactionStore.addTransaction(transactionParser.parseTransaction(requestBody));
+            response.setStatus(HttpServletResponse.SC_CREATED);
+        } catch (TransactionExpiredException tee) {
+            LOGGER.info("Posted Transaction '" + tee.getExpiredTime() + "' Is Expired - Dropping...");
+            response.setStatus(HttpServletResponse.SC_NO_CONTENT);
         } catch (JSONException jsone) {
             LOGGER.error("JSON Exception Encountered In POST Request", jsone);
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);

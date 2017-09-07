@@ -3,7 +3,7 @@ package com.severett.paymentprocessor.services;
 import com.severett.paymentprocessor.model.Transaction;
 import java.util.Map;
 
-public interface TransactionStore {
+public interface TransactionStorageService {
     
     public void addTransaction(Transaction transaction);
     

@@ -16,9 +16,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
-public class TransactionStoreImpl implements TransactionStore {
+public class TransactionStorageServiceImpl implements TransactionStorageService {
     
-    private static final Logger LOGGER = LoggerFactory.getLogger(TransactionStoreImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TransactionStorageServiceImpl.class);
     
     private static final String SUM_STAT = "sum";
     private static final String AVG_STAT = "avg";
@@ -37,7 +37,7 @@ public class TransactionStoreImpl implements TransactionStore {
     private final Lock readLock = readWriteLock.readLock();
     private final Lock writeLock = readWriteLock.writeLock();
     
-    public TransactionStoreImpl() {
+    public TransactionStorageServiceImpl() {
         maxQueue = new PriorityQueue<>((t1, t2) -> {
             return t2.compareTo(t1);
         });
@@ -63,7 +63,7 @@ public class TransactionStoreImpl implements TransactionStore {
         try {
             writeLock.lock();
             timestampQueue.add(transaction);
-            double amt = transaction.getAmt();
+            double amt = transaction.getCount();
             maxQueue.add(amt);
             minQueue.add(amt);
             sum += amt;
@@ -108,7 +108,7 @@ public class TransactionStoreImpl implements TransactionStore {
                 // Check for whether the queue is empty or if there are no expired transactions
                 if ((oldest != null) && (oldest.getTimestamp().compareTo(minuteBefore) < 0)) {
                     timestampQueue.poll();
-                    double amt = oldest.getAmt();
+                    double amt = oldest.getCount();
                     sum -= amt;
                     maxQueue.remove(amt);
                     minQueue.remove(amt);

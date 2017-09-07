@@ -5,19 +5,19 @@ import java.time.Instant;
 public final class Transaction {
     
     private final Instant timestamp;
-    private final double amt;
+    private final long count;
     
-    public Transaction(Instant timestamp, double amt) {
+    public Transaction(Instant timestamp, long count) {
         this.timestamp = timestamp;
-        this.amt = amt;
+        this.count = count;
     }
     
     public Instant getTimestamp() {
         return timestamp;
     }
     
-    public double getAmt() {
-        return amt;
+    public long getCount() {
+        return count;
     }
     
 }

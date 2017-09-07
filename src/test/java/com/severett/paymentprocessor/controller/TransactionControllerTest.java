@@ -1,11 +1,15 @@
 package com.severett.paymentprocessor.controller;
 
+import com.severett.paymentprocessor.exceptions.TransactionExpiredException;
+import com.severett.paymentprocessor.model.Transaction;
+import com.severett.paymentprocessor.services.TransactionParseService;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.any;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -15,7 +19,8 @@ import static org.hamcrest.Matchers.*;
 import org.json.JSONObject;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import com.severett.paymentprocessor.services.TransactionStore;
+import com.severett.paymentprocessor.services.TransactionStorageService;
+import org.json.JSONException;
 
 @RunWith(SpringRunner.class)
 @WebMvcTest(TransactionController.class)
@@ -25,7 +30,10 @@ public class TransactionControllerTest {
     private MockMvc mvc;
     
     @MockBean
-    private TransactionStore transactionStore;
+    private TransactionStorageService transactionStore;
+    
+    @MockBean
+    private TransactionParseService transactionParseService;
     
     @Test
     public void getStatisticsTest() throws Exception {
@@ -49,8 +57,12 @@ public class TransactionControllerTest {
     @Test
     public void postValidTransactionTest() throws Exception {
         JSONObject postContent = new JSONObject();
-        postContent.put("amount", 12.3);
-        postContent.put("timestamp", Instant.now().toEpochMilli());
+        Instant now = Instant.now();
+        long count = 12;
+        postContent.put("count", count);
+        postContent.put("timestamp", now.toEpochMilli());
+        given(transactionParseService.parseTransaction(postContent.toString()))
+                .willReturn(new Transaction(now, count));
         mvc.perform(post("/transactions")
                 .contentType("application/json")
                 .content(postContent.toString())
@@ -61,8 +73,10 @@ public class TransactionControllerTest {
     @Test
     public void postExpiredTransactionTest() throws Exception {
         JSONObject postContent = new JSONObject();
-        postContent.put("amount", 3.50);
+        postContent.put("count", 3);
         postContent.put("timestamp", Instant.now().minusSeconds(100L).toEpochMilli());
+        given(transactionParseService.parseTransaction(postContent.toString()))
+                .willThrow(TransactionExpiredException.class);
         mvc.perform(post("/transactions")
                 .contentType("application/json")
                 .content(postContent.toString())
@@ -72,26 +86,30 @@ public class TransactionControllerTest {
     @Test
     public void postBadTransactionTest() throws Exception {
         JSONObject postContent = new JSONObject();
-        postContent.put("amount", "FAIL");
+        postContent.put("count", "FAIL");
         postContent.put("timestamp", Instant.now().toEpochMilli());
+        given(transactionParseService.parseTransaction(postContent.toString()))
+                .willThrow(new JSONException("JSONObject[\"count\"] is not a long."));
         mvc.perform(post("/transactions")
                 .contentType("application/json")
                 .content(postContent.toString())
             ).andExpect(status().isBadRequest())
              .andExpect(jsonPath("$.error", is("request")))
-             .andExpect(jsonPath("$.message", is("JSONObject[\"amount\"] is not a number.")));
+             .andExpect(jsonPath("$.message", is("JSONObject[\"count\"] is not a long.")));
     }
     
     @Test
     public void postInvalidTransaction() throws Exception {
         JSONObject postContent = new JSONObject();
         postContent.put("timestamp", Instant.now().toEpochMilli());
+        given(transactionParseService.parseTransaction(postContent.toString()))
+                .willThrow(new JSONException("'count' and 'timestamp' must be defined."));
         mvc.perform(post("/transactions")
                 .contentType("application/json")
                 .content(postContent.toString())
             ).andExpect(status().isBadRequest())
              .andExpect(jsonPath("$.error", is("request")))
-             .andExpect(jsonPath("$.message", is("'amt' and 'timestamp' must be defined.")));
+             .andExpect(jsonPath("$.message", is("'count' and 'timestamp' must be defined.")));
     }
     
 }

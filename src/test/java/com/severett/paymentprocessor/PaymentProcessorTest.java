@@ -31,7 +31,7 @@ public class PaymentProcessorTest {
         JSONObject postContent = new JSONObject();
         
         // Post first entry
-        postContent.put("amount", 10.0);
+        postContent.put("count", 10);
         postContent.put("timestamp", Instant.now().toEpochMilli());
         mvc.perform(post("/transactions")
                 .contentType("application/json")
@@ -39,7 +39,7 @@ public class PaymentProcessorTest {
             ).andExpect(status().isCreated());
         
         // Post second entry
-        postContent.put("amount", 50.75);
+        postContent.put("count", 50);
         postContent.put("timestamp", Instant.now().toEpochMilli());
         mvc.perform(post("/transactions")
                 .contentType("application/json")
@@ -47,7 +47,7 @@ public class PaymentProcessorTest {
             ).andExpect(status().isCreated());
         
         // Post expired entry
-        postContent.put("amount", 1000.0);
+        postContent.put("count", 1000);
         postContent.put("timestamp", Instant.now().minusSeconds(65L).toEpochMilli());
         mvc.perform(post("/transactions")
                 .contentType("application/json")
@@ -55,7 +55,7 @@ public class PaymentProcessorTest {
             ).andExpect(status().isNoContent());
         
         // Post soon-expiring entry
-        postContent.put("amount", 20.50);
+        postContent.put("count", 20);
         postContent.put("timestamp", Instant.now().minusSeconds(58L).toEpochMilli());
         mvc.perform(post("/transactions")
                 .contentType("application/json")
@@ -63,7 +63,7 @@ public class PaymentProcessorTest {
             ).andExpect(status().isCreated());
         
         // Post third entry
-        postContent.put("amount", 29.25);
+        postContent.put("count", 30);
         postContent.put("timestamp", Instant.now().toEpochMilli());
         mvc.perform(post("/transactions")
                 .contentType("application/json")
@@ -78,7 +78,7 @@ public class PaymentProcessorTest {
             ).andExpect(status().isOk())
              .andExpect(jsonPath("$.sum", is(90)))
              .andExpect(jsonPath("$.avg", is(30)))
-             .andExpect(jsonPath("$.max", is(50.75)))
+             .andExpect(jsonPath("$.max", is(50)))
              .andExpect(jsonPath("$.min", is(10)))
              .andExpect(jsonPath("$.count", is(3)));
     }
