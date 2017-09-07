@@ -27,9 +27,9 @@ public class TransactionController {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionController.class);
     
-    @RequestMapping(value = "/transactions", method = RequestMethod.POST, produces = "application/json")
+    @RequestMapping(value = "/upload", method = RequestMethod.POST, produces = "application/json")
     @ResponseBody
-    public String transactions(HttpServletRequest request, HttpServletResponse response, @RequestBody String requestBody) {
+    public String upload(HttpServletRequest request, HttpServletResponse response, @RequestBody String requestBody) {
         LOGGER.debug("Received POST Request");
         JSONObject responseObj = new JSONObject();
         try {
@@ -58,7 +58,7 @@ public class TransactionController {
         LOGGER.debug("Received GET Request");
         JSONObject responseObj;
         try {
-            responseObj = new JSONObject(transactionStore.getTransactionStats());
+            responseObj = new JSONObject(transactionStore.getTransactionStats().get());
             response.setStatus(HttpServletResponse.SC_OK);
         } catch (Exception e) {
             LOGGER.error("Exception Encountered In GET Request", e);

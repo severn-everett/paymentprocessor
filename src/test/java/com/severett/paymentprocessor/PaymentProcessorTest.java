@@ -33,7 +33,7 @@ public class PaymentProcessorTest {
         // Post first entry
         postContent.put("count", 10);
         postContent.put("timestamp", Instant.now().toEpochMilli());
-        mvc.perform(post("/transactions")
+        mvc.perform(post("/upload")
                 .contentType("application/json")
                 .content(postContent.toString())
             ).andExpect(status().isCreated());
@@ -41,7 +41,7 @@ public class PaymentProcessorTest {
         // Post second entry
         postContent.put("count", 50);
         postContent.put("timestamp", Instant.now().toEpochMilli());
-        mvc.perform(post("/transactions")
+        mvc.perform(post("/upload")
                 .contentType("application/json")
                 .content(postContent.toString())
             ).andExpect(status().isCreated());
@@ -49,7 +49,7 @@ public class PaymentProcessorTest {
         // Post expired entry
         postContent.put("count", 1000);
         postContent.put("timestamp", Instant.now().minusSeconds(65L).toEpochMilli());
-        mvc.perform(post("/transactions")
+        mvc.perform(post("/upload")
                 .contentType("application/json")
                 .content(postContent.toString())
             ).andExpect(status().isNoContent());
@@ -57,7 +57,7 @@ public class PaymentProcessorTest {
         // Post soon-expiring entry
         postContent.put("count", 20);
         postContent.put("timestamp", Instant.now().minusSeconds(58L).toEpochMilli());
-        mvc.perform(post("/transactions")
+        mvc.perform(post("/upload")
                 .contentType("application/json")
                 .content(postContent.toString())
             ).andExpect(status().isCreated());
@@ -65,7 +65,7 @@ public class PaymentProcessorTest {
         // Post third entry
         postContent.put("count", 30);
         postContent.put("timestamp", Instant.now().toEpochMilli());
-        mvc.perform(post("/transactions")
+        mvc.perform(post("/upload")
                 .contentType("application/json")
                 .content(postContent.toString())
             ).andExpect(status().isCreated());

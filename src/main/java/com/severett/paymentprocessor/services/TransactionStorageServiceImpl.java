@@ -4,8 +4,12 @@ import com.severett.paymentprocessor.model.Transaction;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.PriorityQueue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
@@ -26,11 +30,11 @@ public class TransactionStorageServiceImpl implements TransactionStorageService 
     private static final String MIN_STAT = "min";
     private static final String COUNT_STAT = "count";
     
-    private double sum = 0.0;
-    private long count = 0L;
+    private long sum = 0L;
+    private long transactionCount = 0L;
     
-    private final PriorityQueue<Double> maxQueue;
-    private final PriorityQueue<Double> minQueue;
+    private final PriorityQueue<Long> maxQueue;
+    private final PriorityQueue<Long> minQueue;
     private final PriorityQueue<Transaction> timestampQueue;
     
     private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
@@ -63,34 +67,46 @@ public class TransactionStorageServiceImpl implements TransactionStorageService 
         try {
             writeLock.lock();
             timestampQueue.add(transaction);
-            double amt = transaction.getCount();
-            maxQueue.add(amt);
-            minQueue.add(amt);
-            sum += amt;
-            count += 1;
+            long count = transaction.getCount();
+            maxQueue.add(count);
+            minQueue.add(count);
+            sum += count;
+            transactionCount += 1;
         } finally {
             writeLock.unlock();
         }
     }
     
     @Override
-    public Map<String, Object> getTransactionStats() {
+    public Optional<Map<String, Object>> getTransactionStats() {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Callable<Map<String, Object>> callable = () -> compileTransactionStats();
+        Future<Map<String, Object>> future = executor.submit(callable);
+        try {
+            return Optional.of(future.get());
+        } catch (Exception e) {
+            LOGGER.error("Exception occurred when obtaining statistics: " + e.getMessage());
+            return Optional.empty();
+        }
+    }
+    
+    private Map<String, Object> compileTransactionStats() {
         try {
             readLock.lock();
             Map<String, Object> statsMap = new HashMap<>();
             // Add the "sum" statistic
             statsMap.put(SUM_STAT, sum);
             // Add the "avg" statistic (default to 0.0)
-            double avg = count > 0 ? sum / (double) count : 0.0;
+            double avg = transactionCount > 0 ? sum / (double) transactionCount : 0.0;
             statsMap.put(AVG_STAT, avg);
             // Add the "max" statistic (default to 0.0)
-            double max = !maxQueue.isEmpty() ? maxQueue.peek() : 0.0;
+            long max = !maxQueue.isEmpty() ? maxQueue.peek() : 0L;
             statsMap.put(MAX_STAT, max);
             // Add the "min" statistic (default to 0.0)
-            double min = !minQueue.isEmpty() ? minQueue.peek() : 0.0;
+            long min = !minQueue.isEmpty() ? minQueue.peek() : 0L;
             statsMap.put(MIN_STAT, min);
             // Add the "count" statistic
-            statsMap.put(COUNT_STAT, count);
+            statsMap.put(COUNT_STAT, transactionCount);
             return statsMap;
         } finally {
             readLock.unlock();
@@ -108,11 +124,11 @@ public class TransactionStorageServiceImpl implements TransactionStorageService 
                 // Check for whether the queue is empty or if there are no expired transactions
                 if ((oldest != null) && (oldest.getTimestamp().compareTo(minuteBefore) < 0)) {
                     timestampQueue.poll();
-                    double amt = oldest.getCount();
-                    sum -= amt;
-                    maxQueue.remove(amt);
-                    minQueue.remove(amt);
-                    count -= 1;
+                    long count = oldest.getCount();
+                    sum -= count;
+                    maxQueue.remove(count);
+                    minQueue.remove(count);
+                    transactionCount -= 1;
                 } else {
                     finishTrim = true;
                 }
@@ -120,7 +136,7 @@ public class TransactionStorageServiceImpl implements TransactionStorageService 
         } finally {
             LOGGER.debug("Trim Operation Completed");
             writeLock.unlock();
-        }
+        } 
     }
     
 }

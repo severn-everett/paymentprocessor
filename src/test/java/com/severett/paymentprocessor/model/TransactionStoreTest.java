@@ -21,32 +21,31 @@ public class TransactionStoreTest {
     @Test
     public void fullStatsRetrievalTest() throws InterruptedException {
         Map<String, Object> responseMap = new HashMap<>();
-        responseMap.put("sum", 75.0);
+        responseMap.put("sum", 75L);
         responseMap.put("avg", 25.0);
-        responseMap.put("max", 50.0);
-        responseMap.put("min", 5.0);
+        responseMap.put("max", 50L);
+        responseMap.put("min", 5L);
         responseMap.put("count", 3L);
         transactionStore.addTransaction(new Transaction(Instant.now(), 20));
         transactionStore.addTransaction(new Transaction(Instant.now(), 50));
         transactionStore.addTransaction(new Transaction(Instant.now(), 5));
-        Thread.sleep(50L);
-        Assert.assertEquals(responseMap, transactionStore.getTransactionStats());
+        Assert.assertEquals(responseMap, transactionStore.getTransactionStats().get());
     }
     
     @Test
     public void partlyExpiredStatsRetrievalTest() throws InterruptedException {
         Map<String, Object> responseMap = new HashMap<>();
-        responseMap.put("sum", 40.0);
+        responseMap.put("sum", 40L);
         responseMap.put("avg", 20.0);
-        responseMap.put("max", 30.0);
-        responseMap.put("min", 10.0);
+        responseMap.put("max", 30L);
+        responseMap.put("min", 10L);
         responseMap.put("count", 2L);
         transactionStore.addTransaction(new Transaction(Instant.now().minusSeconds(58L), 100));
         transactionStore.addTransaction(new Transaction(Instant.now(), 30));
         transactionStore.addTransaction(new Transaction(Instant.now(), 10));
         System.out.println("Sleeping 5 seconds to expire one transaction...");
         Thread.sleep(5000L);
-        Assert.assertEquals(responseMap, transactionStore.getTransactionStats());
+        Assert.assertEquals(responseMap, transactionStore.getTransactionStats().get());
     }
     
 }

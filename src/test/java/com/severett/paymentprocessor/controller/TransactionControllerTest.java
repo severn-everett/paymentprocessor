@@ -9,7 +9,6 @@ import java.util.Map;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.any;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -20,6 +19,7 @@ import org.json.JSONObject;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import com.severett.paymentprocessor.services.TransactionStorageService;
+import java.util.Optional;
 import org.json.JSONException;
 
 @RunWith(SpringRunner.class)
@@ -43,7 +43,7 @@ public class TransactionControllerTest {
         statsMap.put("max", 200.0);
         statsMap.put("min", 50.0);
         statsMap.put("count", 10L);
-        given(transactionStore.getTransactionStats()).willReturn(statsMap);
+        given(transactionStore.getTransactionStats()).willReturn(Optional.of(statsMap));
         mvc.perform(get("/statistics")
                 .contentType("application/json")
             ).andExpect(status().isOk())
@@ -63,7 +63,7 @@ public class TransactionControllerTest {
         postContent.put("timestamp", now.toEpochMilli());
         given(transactionParseService.parseTransaction(postContent.toString()))
                 .willReturn(new Transaction(now, count));
-        mvc.perform(post("/transactions")
+        mvc.perform(post("/upload")
                 .contentType("application/json")
                 .content(postContent.toString())
             ).andExpect(status().isCreated());
@@ -77,7 +77,7 @@ public class TransactionControllerTest {
         postContent.put("timestamp", Instant.now().minusSeconds(100L).toEpochMilli());
         given(transactionParseService.parseTransaction(postContent.toString()))
                 .willThrow(TransactionExpiredException.class);
-        mvc.perform(post("/transactions")
+        mvc.perform(post("/upload")
                 .contentType("application/json")
                 .content(postContent.toString())
             ).andExpect(status().isNoContent());
@@ -90,7 +90,7 @@ public class TransactionControllerTest {
         postContent.put("timestamp", Instant.now().toEpochMilli());
         given(transactionParseService.parseTransaction(postContent.toString()))
                 .willThrow(new JSONException("JSONObject[\"count\"] is not a long."));
-        mvc.perform(post("/transactions")
+        mvc.perform(post("/upload")
                 .contentType("application/json")
                 .content(postContent.toString())
             ).andExpect(status().isBadRequest())
@@ -104,7 +104,7 @@ public class TransactionControllerTest {
         postContent.put("timestamp", Instant.now().toEpochMilli());
         given(transactionParseService.parseTransaction(postContent.toString()))
                 .willThrow(new JSONException("'count' and 'timestamp' must be defined."));
-        mvc.perform(post("/transactions")
+        mvc.perform(post("/upload")
                 .contentType("application/json")
                 .content(postContent.toString())
             ).andExpect(status().isBadRequest())
