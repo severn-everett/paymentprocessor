@@ -1,5 +1,6 @@
 package com.severett.paymentprocessor.controller;
 
+import com.severett.paymentprocessor.exceptions.InvalidUploadException;
 import com.severett.paymentprocessor.exceptions.TransactionExpiredException;
 import com.severett.paymentprocessor.services.TransactionParseService;
 import com.severett.paymentprocessor.services.TransactionStorageService;
@@ -38,11 +39,11 @@ public class TransactionController {
         } catch (TransactionExpiredException tee) {
             LOGGER.info("Posted Transaction '" + tee.getExpiredTime() + "' Is Expired - Dropping...");
             response.setStatus(HttpServletResponse.SC_NO_CONTENT);
-        } catch (JSONException jsone) {
-            LOGGER.error("JSON Exception Encountered In POST Request", jsone);
+        } catch (JSONException | InvalidUploadException inputEx) {
+            LOGGER.error("Input Exception Encountered In POST Request", inputEx);
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             responseObj.put("error", "request");
-            responseObj.put("message", jsone.getMessage());
+            responseObj.put("message", inputEx.getMessage());
         } catch (Exception e) {
             LOGGER.error("Exception Encountered In POST Request", e);
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);

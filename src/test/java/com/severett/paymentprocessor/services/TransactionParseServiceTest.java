@@ -1,5 +1,6 @@
 package com.severett.paymentprocessor.services;
 
+import com.severett.paymentprocessor.exceptions.InvalidUploadException;
 import com.severett.paymentprocessor.exceptions.TransactionExpiredException;
 import com.severett.paymentprocessor.model.Transaction;
 import java.time.Instant;
@@ -51,14 +52,27 @@ public class TransactionParseServiceTest {
     }
     
     @Test
-    public void invalidTransactionParseTest() throws Exception {
+    public void noCountTransactionParseTest() throws Exception {
         JSONObject postContent = new JSONObject();
         postContent.put("timestamp", Instant.now().toEpochMilli());
         try {
             transactionParseService.parseTransaction(postContent.toString());
             Assert.fail("Expected a JSONException, yet none occurred.");
-        } catch (JSONException jsone) {
-            Assert.assertEquals(jsone.getMessage(), "'count' and 'timestamp' must be defined.");
+        } catch (InvalidUploadException iue) {
+            Assert.assertEquals("'count' and 'timestamp' must be defined.", iue.getMessage());
+        }
+    }
+    
+    @Test
+    public void badCountUploadParseTest() throws Exception {
+        JSONObject postContent = new JSONObject();
+        postContent.put("count", "-2");
+        postContent.put("timestamp", Instant.now().toEpochMilli());
+        try {
+            transactionParseService.parseTransaction(postContent.toString());
+            Assert.fail("Expected a JSONException, yet none occurred.");
+        } catch (InvalidUploadException iue) {
+            Assert.assertEquals("'count' must be greater than zero.", iue.getMessage());
         }
     }
     
