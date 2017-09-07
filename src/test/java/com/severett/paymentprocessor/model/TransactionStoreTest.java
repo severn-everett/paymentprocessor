@@ -1,5 +1,6 @@
 package com.severett.paymentprocessor.model;
 
+import com.severett.paymentprocessor.services.TransactionStoreImpl;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,11 +11,11 @@ import org.junit.Test;
 
 public class TransactionStoreTest {
     
-    TransactionStore transactionStore;
+    TransactionStoreImpl transactionStore;
     
     @Before
     public void setup() {
-        transactionStore = new TransactionStore();
+        transactionStore = new TransactionStoreImpl();
     }
     
     @Test

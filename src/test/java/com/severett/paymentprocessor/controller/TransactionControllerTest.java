@@ -1,6 +1,5 @@
 package com.severett.paymentprocessor.controller;
 
-import com.severett.paymentprocessor.model.ITransactionStore;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -16,6 +15,7 @@ import static org.hamcrest.Matchers.*;
 import org.json.JSONObject;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import com.severett.paymentprocessor.services.TransactionStore;
 
 @RunWith(SpringRunner.class)
 @WebMvcTest(TransactionController.class)
@@ -25,7 +25,7 @@ public class TransactionControllerTest {
     private MockMvc mvc;
     
     @MockBean
-    private ITransactionStore transactionStore;
+    private TransactionStore transactionStore;
     
     @Test
     public void getStatisticsTest() throws Exception {

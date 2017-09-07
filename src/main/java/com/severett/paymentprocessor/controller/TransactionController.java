@@ -1,6 +1,5 @@
 package com.severett.paymentprocessor.controller;
 
-import com.severett.paymentprocessor.model.ITransactionStore;
 import com.severett.paymentprocessor.model.Transaction;
 import java.time.Instant;
 import javax.servlet.http.HttpServletRequest;
@@ -15,12 +14,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import com.severett.paymentprocessor.services.TransactionStore;
 
 @RestController
 public class TransactionController {
     
     @Autowired
-    ITransactionStore transactionStore;
+    TransactionStore transactionStore;
     
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionController.class);
     
